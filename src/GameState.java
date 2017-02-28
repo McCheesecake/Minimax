@@ -38,16 +38,16 @@ public class GameState {
 	public class unit_action {
 		public Action move(int unitID, String Command){
 			if (Command == "NORTH") {
-				return Action.createPrimitiveMove(unitID, Direction.NORTH);
+				//return Action.createPrimitiveMove(unitID, Direction.NORTH);
 			}
 			if (Command == "EAST") {
-				return Action.createPrimitiveMove(unitID, Direction.EAST);
+				//return Action.createPrimitiveMove(unitID, Direction.EAST);
 			}
 			if (Command == "SOUTH") {
-				return Action.createPrimitiveMove(unitID, Direction.SOUTH);
+				//return Action.createPrimitiveMove(unitID, Direction.SOUTH);
 			}
 			if (Command == "WEST") {
-				return Action.createPrimitiveMove(unitID, Direction.WEST);
+				//return Action.createPrimitiveMove(unitID, Direction.WEST);
 			}
 			return null;
 		}
@@ -74,6 +74,12 @@ public class GameState {
 			this.unit_ID = unit_ID;
 			this.name = name;
 		}
+		
+	}
+	
+	public Unit_info deepCopy(Unit_info unit){
+		Unit_info copy = new Unit_info(unit.health, unit.range, unit.damage, unit.x_loc, unit.y_loc, unit.unit_ID, unit.name);
+		return copy;
 	}
 
 
@@ -321,14 +327,27 @@ public class GameState {
     	}
     	
     	String[] valid_actions = {"NORTH", "EAST", "SOUTH", "WEST", "Attack"};
+    	
+    	//System.out.println("Unit 1 name: " + moving_units.get(0).name + "; Range: " + moving_units.get(0).range);
+    	
     	if (moving_units.size() != 0) {
     		for (int index1 = 0; index1 < (int)Math.pow(valid_actions.length, moving_units.size()); index1 ++) {
     			int action_num = index1;
     			Map<Integer,Action> child_node_action = new HashMap<Integer,Action>(); 
     			
+    			List<Unit_info> moving_units_temp = new ArrayList<Unit_info>();
+    			List<Unit_info> static_units_temp = new ArrayList<Unit_info>();
+    			for (int array_ind = 0; array_ind < moving_units.size(); array_ind ++) {
+    				moving_units_temp.add(deepCopy(moving_units.get(array_ind)));
+    			}
+    			for (int array_ind = 0; array_ind < static_units.size(); array_ind ++) {
+    				static_units_temp.add(deepCopy(static_units.get(array_ind)));
+    			}
+    			
+    			//System.out.println(moving_units_temp.get(1).x_loc + " " + moving_units_temp.get(1).y_loc);
+    			
     			for (int index2 = 0; index2 < moving_units.size(); index2++) {
-    				Unit_info current_unit = moving_units.get(index2);
-    				//System.out.println("current unit ID: " + current_unit.unit_ID);
+    				Unit_info current_unit = moving_units_temp.get(index2);
     				
     				//Binary check for resource nearby:
     				int resource_north = 0;
@@ -342,31 +361,50 @@ public class GameState {
     						//determine resource location:
     						if (resource_loc[0][rs_index] - current_unit.x_loc == 1) {
     							resource_east = 1;
-    							System.out.println("Resource detection East: " + resource_east);
     						}
     						if (resource_loc[0][rs_index] - current_unit.x_loc == -1) {
     							resource_west = 1;
-    							System.out.println("Resource detection West: " + resource_west);
-    						}
-    						if (resource_loc[1][rs_index] - current_unit.y_loc == 1) {
-    							resource_north = 1;
-    							System.out.println("Resource detection North: " + resource_north);
     						}
     						if (resource_loc[1][rs_index] - current_unit.y_loc == -1) {
-    							resource_south = 1;
-    							System.out.println("Resource detection South: " + resource_south);
+    							resource_north = 1;
     						}
-    						
-    						
+    						if (resource_loc[1][rs_index] - current_unit.y_loc == 1) {
+    							resource_south = 1;
+    						}
+    					}
+    				}
+    				
+    				//check if running into one another:
+    				for (int index = 0; index < moving_units.size(); index ++) {
+    					int unit_dist_check = Math.abs(current_unit.x_loc - moving_units.get(index).x_loc) + Math.abs(current_unit.y_loc - moving_units.get(index).y_loc);  
+    					if (unit_dist_check == 1) {
+    						int unit_dist_x = current_unit.x_loc - moving_units.get(index).x_loc;
+    						int unit_dist_y = current_unit.y_loc - moving_units.get(index).y_loc;
+    						if (unit_dist_x == 1) {
+    							resource_west = 1;
+    						}
+    						if (unit_dist_x == -1) {
+    							resource_east = 1;
+    						}
+    						if (unit_dist_y == 1) {
+    							resource_north = 1;
+    						}
+    						if (unit_dist_y == -1) {
+    							resource_south = 1;
+    						}
     					}
     				}
     				
     				int added_cost = 0;
+					//System.out.println("North East South West Check: " + resource_north + " " + resource_east + " " + resource_south + " " + resource_west);
+					//System.out.println("Current unit location: " + current_unit.x_loc + " " + current_unit.y_loc);
+    				//System.out.println("Attempting to move unit: " + current_unit.unit_ID + " direction: " + Math.floorMod(action_num, valid_actions.length));
     				
     				if (Math.floorMod(action_num, valid_actions.length) == 0) {
     					if (current_unit.y_loc < parent_state.yExtent && resource_north == 0) {
 	    					//current_unit.y_loc += 1;
-	    					moving_units.get(index2).y_loc += 1;
+    						moving_units_temp.get(index2).y_loc -= 1;
+    						
 	    					child_node_action.put(current_unit.unit_ID, Action.createPrimitiveMove(current_unit.unit_ID, Direction.NORTH));
 	    					
 	    					added_cost += 1;
@@ -375,7 +413,7 @@ public class GameState {
     				if (Math.floorMod(action_num, valid_actions.length) == 1) {
     					if (current_unit.x_loc < parent_state.xExtent && resource_east == 0) {
     						//current_unit.x_loc += 1;
-    						moving_units.get(index2).x_loc += 1;
+    						moving_units_temp.get(index2).x_loc += 1;
     						child_node_action.put(current_unit.unit_ID, Action.createPrimitiveMove(current_unit.unit_ID, Direction.EAST));
     						
     						added_cost += 1;
@@ -384,16 +422,16 @@ public class GameState {
     				if (Math.floorMod(action_num, valid_actions.length) == 2) {
     					if (current_unit.y_loc != 0 && resource_south == 0) {
     						//current_unit.y_loc -= 1;
-    						moving_units.get(index2).y_loc -= 1;
+    						moving_units_temp.get(index2).y_loc += 1;
     						child_node_action.put(current_unit.unit_ID, Action.createPrimitiveMove(current_unit.unit_ID, Direction.SOUTH));
     						
     						added_cost += 1;
     					}
     				}
     				if (Math.floorMod(action_num, valid_actions.length) == 3) {
-    					if (current_unit.x_loc != 0 && resource_west != 1) {
+    					if (current_unit.x_loc != 0 && resource_west == 0) {
     						//current_unit.x_loc -= 1;
-    						moving_units.get(index2).x_loc -= 1;
+    						moving_units_temp.get(index2).x_loc -= 1;
     						child_node_action.put(current_unit.unit_ID, Action.createPrimitiveMove(current_unit.unit_ID, Direction.WEST));
     						
     						added_cost += 1;
@@ -409,10 +447,10 @@ public class GameState {
     							closest_unit_index = index3;
     						}
     						if (current_unit.range == 1) {
-    							if (closest_distance_temp <= 2) {
+    							if (closest_distance_temp < 2) {
     								if (static_units.get(closest_unit_index).health > 0) {
     									child_node_action.put(current_unit.unit_ID, Action.createPrimitiveAttack(current_unit.unit_ID, static_units.get(closest_unit_index).unit_ID));
-    									static_units.get(closest_unit_index).health -= current_unit.damage;
+    									static_units_temp.get(closest_unit_index).health -= current_unit.damage;
     								}
     							}
     						}
@@ -420,34 +458,53 @@ public class GameState {
     							if (closest_distance_temp <= current_unit.range) {
     								if (static_units.get(closest_unit_index).health > 0) {
 	    								child_node_action.put(current_unit.unit_ID, Action.createPrimitiveAttack(current_unit.unit_ID, static_units.get(closest_unit_index).unit_ID));
-	    								static_units.get(closest_unit_index).health -= current_unit.damage;
+	    								static_units_temp.get(closest_unit_index).health -= current_unit.damage;
     								}
     							}
     						}
     					}
     				}
     				//first child state should have been created already here:
-    				
-    				
     				action_num /= valid_actions.length;
     				
-    				GameState temp_state;
     				
-    				if (child_node_action.size() >= moving_units.size()) {
+    				
+    				if (child_node_action.size() == moving_units.size()) {
+    					GameState temp_state;
 	    				int new_path_cost = parent_state.path_cost + added_cost;
+	    				
+	    				//System.out.println(" ");
+	    			//	for(int a = 0; a < moving_units_temp.size(); a ++) {
+	    				//	System.out.println("temp moving units final loc: " + moving_units_temp.get(a).x_loc + " " + moving_units_temp.get(a).y_loc);
+	    			//	}
+	    			//	System.out.println(" ");
+	    				
+	    				List<Unit_info> moving_units_temp1 = new ArrayList<Unit_info>(moving_units_temp);
+	    				List<Unit_info> static_units_temp1 = new ArrayList<Unit_info>(static_units_temp);
 	    				if (status == 1) {
-	    					temp_state = new GameState(parent_state.xExtent, parent_state.yExtent, parent_state.resource_loc, parent_state.enemy_ID,moving_units,static_units,new_path_cost);
+	    					temp_state = new GameState(parent_state.xExtent, parent_state.yExtent, parent_state.resource_loc, parent_state.enemy_ID,moving_units_temp1,static_units_temp1,new_path_cost);
 	    		    	}
 	    				else {
-	    		    		temp_state = new GameState(parent_state.xExtent, parent_state.yExtent, parent_state.resource_loc, parent_state.enemy_ID,static_units,moving_units,new_path_cost);
+	    		    		temp_state = new GameState(parent_state.xExtent, parent_state.yExtent, parent_state.resource_loc, parent_state.enemy_ID,static_units_temp1,moving_units_temp1,new_path_cost);
 	    		    	}
 	    		    	GameStateChild temp_child_state = new GameStateChild (child_node_action, temp_state);
+	    		    	
+	    		    	//System.out.println("North East South West Check: " + resource_north + " " + resource_east + " " + resource_south + " " + resource_west);
+	    		    	//System.out.println("Generating child node: " + child_node_action);
+	    		    	//System.out.println(" ");
+	    		    	
 	    		    	children_nodes.add(temp_child_state);
+	    		    	
+	    		    	moving_units_temp.clear();
+	    		    	static_units_temp.clear();
     				}
     			}
     		}
     		
     	}
+      //  for (int index = 0; index < children_nodes.size(); index ++) {
+     //   	System.out.println("Children node with " + children_nodes.get(index).state.My_Units.size() + " " + children_nodes.get(index).state.Enemy_Units.size() + " units");
+     //   }
         return children_nodes;
     }
 }

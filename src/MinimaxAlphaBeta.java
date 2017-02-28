@@ -34,7 +34,7 @@ public class MinimaxAlphaBeta extends Agent {
     @Override
     public Map<Integer, Action> middleStep(State.StateView newstate, History.HistoryView statehistory) {
         GameStateChild bestChild = alphaBetaSearch(new GameStateChild(newstate),
-                10,
+                5,
                 Double.NEGATIVE_INFINITY,
                 Double.POSITIVE_INFINITY);
         
@@ -104,6 +104,11 @@ public class MinimaxAlphaBeta extends Agent {
     	List<GameStateChild> children_nodes = Input_state.state.getChildren(Input_state, 1);
     	children_nodes = orderChildrenWithHeuristics(children_nodes);
     	
+    	//for (int index = 0; index < children_nodes.size(); index ++) {
+    		//System.out.println("Max child actions: " + children_nodes.get(index).action);
+    	//}
+    	//System.out.println(" ");
+    	
     	saved_node chosen_node = new saved_node(0, Input_state);
     	
     	for (int index = 0; index < children_nodes.size(); index ++) {
@@ -135,6 +140,10 @@ public class MinimaxAlphaBeta extends Agent {
     	
     	List<GameStateChild> children_nodes = Input_state.state.getChildren(Input_state, 0);
     	children_nodes = orderChildrenWithHeuristics(children_nodes);
+    	
+    	//for (int index = 0; index < children_nodes.size(); index ++) {
+    		//System.out.println("Min child actions: " + children_nodes.get(index).action);
+    	//}
     	
     	saved_node chosen_node = new saved_node(0, Input_state);
     	
