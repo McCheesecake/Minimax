@@ -280,11 +280,212 @@ public class GameState {
     		total_distance += distance[index];
     	}
     	
-    	double utility = my_total_health - 5*enemy_total_health - 10*total_distance;
+    	int total_cost = AStarCalc(child);
     	
-    	//System.out.println("Node utility: " + utility);
+    	double utility = my_total_health - 5*enemy_total_health - total_distance - 10*total_cost;
+    	
+    	System.out.println("Shortest path cost: " + total_cost);
     	return utility;
     	
+    }
+    
+    public class path_loc {
+    	int x_loc;
+    	int y_loc;
+    	int cost;
+    	public path_loc(int x_loc, int y_loc, int cost) {
+    		this.x_loc = x_loc;
+    		this.y_loc = y_loc;
+    		this.cost = cost;
+    	}
+    }
+    
+    //Calculate pathfinding heuristic:
+    public int AStarCalc(GameStateChild child) {
+    	List<Unit_info> My_units = child.state.My_Units;
+    	List<Unit_info> Enemy_units = child.state.Enemy_Units;
+    	int[][] Resource_loc = child.state.resource_loc;
+    	int[][] Movable_space = new int[2][4];
+    	int[] Closest_movement_cost = new int [My_units.size()];
+    	for (int index =0; index < My_units.size(); index ++){
+    		Closest_movement_cost[index] = 9999;
+    	}
+    	for (int index =0; index < 4; index ++){
+    		Movable_space[0][index] = -1;
+    		Movable_space[1][index] = -1;
+    	}
+    	
+    	//Find open locations next to enemy unit:
+    	for(int index0 = 0; index0 < My_units.size(); index0 ++) {
+    		int x_mine = My_units.get(index0).x_loc;
+    		int y_mine = My_units.get(index0).y_loc;
+	    	for(int index = 0; index < Enemy_units.size(); index ++) {
+	    		int x_temp = Enemy_units.get(index).x_loc;
+	    		int y_temp = Enemy_units.get(index).y_loc;
+		    		int north_closed = 0;
+		    		int south_closed = 0;
+		    		int east_closed  = 0;
+		    		int west_closed  = 0;
+		    		if (Math.abs(x_mine-x_temp) + Math.abs(y_mine-y_temp) > 1) {
+			    		for(int index1 = 0; index1 < Resource_loc[0].length; index1 ++) {
+			    			int resource_dist_temp = Math.abs(resource_loc[0][index1] - x_temp) + Math.abs(resource_loc[1][index1] - y_temp);
+							if (resource_dist_temp == 1) {
+								//determine resource location:
+								if (resource_loc[0][index1] - x_temp == 1) 	{
+									east_closed = 1;
+								}
+								if (resource_loc[0][index1] - x_temp == -1) {
+									west_closed = 1;
+								}
+								if (resource_loc[1][index1] - y_temp == -1) {
+									north_closed = 1;
+								}
+								if (resource_loc[1][index1] - y_temp == 1) 	{
+									south_closed = 1;
+								}
+							}
+			    		}
+			    		if (north_closed == 0){
+			    			Movable_space[0][0] = x_temp; 
+			    			Movable_space[1][0] = y_temp-1;
+			    		}
+			    		if (east_closed == 0){
+			    			Movable_space[0][1] = x_temp+1;
+			    			Movable_space[1][1] = y_temp;
+			    		}
+			    		if (south_closed == 0){
+			    			Movable_space[0][2] = x_temp;
+			    			Movable_space[1][2] = y_temp+1;
+			    		}
+			    		if (west_closed == 0){
+			    			Movable_space[0][3] = x_temp-1;
+			    			Movable_space[1][3] = y_temp;
+			    		}
+			    		for (int index2 = 0; index2 < Movable_space[0].length; index2 ++) {
+			    			if (Movable_space[0][index2] != -1 | Movable_space[1][index2] != -1) {
+			    				path_loc temp_start = new path_loc(x_temp, y_temp, 0);
+			    				path_loc temp_goal =  new path_loc(Movable_space[0][index2], Movable_space[1][index2], 0);
+			    				int cost_temp = AStarHeuristic(temp_start, temp_goal, Resource_loc);
+			    				if (Closest_movement_cost[index0] > cost_temp) {
+			    					Closest_movement_cost[index0] = cost_temp;
+			    				}
+			    			}
+			    		}
+			    	}
+	    	}
+    	}
+    	
+    	int total_cost = 0;
+    	for (int index = 0; index < My_Units.size(); index ++) {
+    		total_cost = Closest_movement_cost[index]; 
+    	}
+    	return total_cost;
+    }
+    
+    public int AStarHeuristic(path_loc start, path_loc goal, int[][] Resource_loc) {
+    	List<path_loc> Open_list = new ArrayList<path_loc>();
+    	List<path_loc> Closed_list = new ArrayList<path_loc>();
+    	List<path_loc> Child_list = new ArrayList<path_loc>();
+    	int shortest_path_cost = 0;
+    	Open_list.add(start);
+    	while (Open_list.size() > 0) {
+    		int lowest_cost = 999999;
+    		int lowest_cost_index = -1;
+    		for (int index = 0; index < Open_list.size(); index++) {
+    			int lowest_cost_temp = heuristic_calc(Open_list.get(index),goal) + Open_list.get(index).cost;
+    			if(lowest_cost_temp <= lowest_cost) {
+    				lowest_cost_index = index;
+    				lowest_cost = lowest_cost_temp;
+    			}
+    			path_loc chosen_node = new path_loc(Open_list.get(lowest_cost_index).x_loc, Open_list.get(lowest_cost_index).y_loc, Open_list.get(lowest_cost_index).cost);
+    			if (chosen_node.cost >= 999) {
+    				System.out.println("No path to target");
+    				shortest_path_cost = -1;
+    			}
+    			if (chosen_node.x_loc == goal.x_loc & chosen_node.y_loc == goal.y_loc) {
+    				Open_list.clear();
+    				Closed_list.clear();
+    				Child_list.clear();
+    				shortest_path_cost = chosen_node.cost;
+    				System.out.println("shortest path cost for 1 unit: " + shortest_path_cost);
+    				break;
+    			}
+    			Child_list = AStarChildrenGen(chosen_node, Resource_loc);
+    			int remove_count = 0;
+    			for (int index1 = 0; index1 < Child_list.size(); index1 ++) {
+    				for (int index2 = 0; index2 < Closed_list.size(); index2 ++) {
+    					if (Child_list.get(index1).x_loc == Closed_list.get(index2).x_loc & Child_list.get(index1).y_loc == Closed_list.get(index2).y_loc) {
+    						Child_list.remove(index1 - remove_count);
+    						remove_count ++;
+    					}
+    				}
+    			}
+    			remove_count = 0;
+    			int open_remove_count = 0;
+    			for (int index1 = 0; index1 < Child_list.size(); index1 ++) {
+    				for (int index2 = 0; index2 < Open_list.size(); index2 ++) {
+    					if (Child_list.get(index1).x_loc == Open_list.get(index2).x_loc & Child_list.get(index1).y_loc == Open_list.get(index2).y_loc) {
+    						if(Child_list.get(index1).cost < Open_list.get(index2).cost) {
+    							Open_list.remove(index2 - open_remove_count);
+    							open_remove_count ++;
+    						}
+    						if(Child_list.get(index1).cost > Open_list.get(index2).cost) {
+    							Child_list.remove(index1 - remove_count);
+    							remove_count ++;
+    						}
+    					}
+    				}
+    			}
+    			for (int index1 = 0; index1 < Child_list.size(); index1 ++) {
+    				Open_list.add(Child_list.get(index1));
+    			}
+    		}
+    	}
+    	return shortest_path_cost;
+    }
+    
+    public int heuristic_calc(path_loc start, path_loc goal) {
+    	int h_cost = 0;
+    	h_cost = Math.abs(start.x_loc - goal.x_loc) + Math.abs(start.y_loc - goal.y_loc);
+    	return h_cost;
+    }
+    
+    public List<path_loc> AStarChildrenGen(path_loc parent, int[][] resource_loc) {
+    	List<path_loc> children_nodes = new ArrayList<path_loc>();
+    	int xp_check = 0;
+    	int xm_check = 0;
+    	int yp_check = 0;
+    	int ym_check = 0;
+    	for (int index = 0; index < resource_loc[0].length; index ++) {
+    		if (resource_loc[0][index] == parent.x_loc+1 & resource_loc[1][index] == parent.y_loc) {
+    			xp_check = 1;
+    		}
+    		if (resource_loc[0][index] == parent.x_loc-1 & resource_loc[1][index] == parent.y_loc) {
+    			xm_check = 1;
+    		}
+    		if (resource_loc[0][index] == parent.x_loc & resource_loc[1][index] == parent.y_loc+1) {
+    			yp_check = 1;
+    		}
+    		if (resource_loc[0][index] == parent.x_loc & resource_loc[1][index] == parent.y_loc-1) {
+    			ym_check = 1;
+    		}
+    	}
+    	
+    	for (int index = 0; index < 4; index ++) {
+    		if (xp_check != 1) {
+    		children_nodes.add(new path_loc(parent.x_loc+1, parent.y_loc, parent.cost+1));
+    		}
+    		if (xm_check != 1) {
+    		children_nodes.add(new path_loc(parent.x_loc-1, parent.y_loc, parent.cost+1));
+    		}
+    		if (yp_check!= 1) {
+    		children_nodes.add(new path_loc(parent.x_loc, parent.y_loc+1, parent.cost+1));
+    		}
+    		if (ym_check!= 1) {
+    		children_nodes.add(new path_loc(parent.x_loc, parent.y_loc-1, parent.cost+1));
+    		}
+    	}
+    	return children_nodes;
     }
 
     /**
@@ -447,7 +648,7 @@ public class GameState {
     							closest_unit_index = index3;
     						}
     						if (current_unit.range == 1) {
-    							if (closest_distance_temp < 2) {
+    							if (closest_distance_temp == 1) {
     								if (static_units.get(closest_unit_index).health > 0) {
     									child_node_action.put(current_unit.unit_ID, Action.createPrimitiveAttack(current_unit.unit_ID, static_units.get(closest_unit_index).unit_ID));
     									static_units_temp.get(closest_unit_index).health -= current_unit.damage;
