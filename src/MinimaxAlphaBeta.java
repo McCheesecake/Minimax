@@ -34,7 +34,7 @@ public class MinimaxAlphaBeta extends Agent {
     @Override
     public Map<Integer, Action> middleStep(State.StateView newstate, History.HistoryView statehistory) {
         GameStateChild bestChild = alphaBetaSearch(new GameStateChild(newstate),
-                5,
+                2,
                 Double.NEGATIVE_INFINITY,
                 Double.POSITIVE_INFINITY);
         

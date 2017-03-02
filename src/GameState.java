@@ -284,7 +284,7 @@ public class GameState {
     	
     	double utility = my_total_health - 5*enemy_total_health - total_distance - 10*total_cost;
     	
-    	System.out.println("Shortest path cost: " + total_cost);
+    //	System.out.println("Shortest path cost: " + total_cost);
     	return utility;
     	
     }
@@ -304,6 +304,9 @@ public class GameState {
     public int AStarCalc(GameStateChild child) {
     	List<Unit_info> My_units = child.state.My_Units;
     	List<Unit_info> Enemy_units = child.state.Enemy_Units;
+    	
+    //	System.out.println("Enemy units " + Enemy_units.get(0).x_loc + " " + Enemy_units.get(0).y_loc);
+    	
     	int[][] Resource_loc = child.state.resource_loc;
     	int[][] Movable_space = new int[2][4];
     	int[] Closest_movement_cost = new int [My_units.size()];
@@ -326,25 +329,40 @@ public class GameState {
 		    		int south_closed = 0;
 		    		int east_closed  = 0;
 		    		int west_closed  = 0;
+		    		int resource_dist = 99;
 		    		if (Math.abs(x_mine-x_temp) + Math.abs(y_mine-y_temp) > 1) {
 			    		for(int index1 = 0; index1 < Resource_loc[0].length; index1 ++) {
-			    			int resource_dist_temp = Math.abs(resource_loc[0][index1] - x_temp) + Math.abs(resource_loc[1][index1] - y_temp);
-							if (resource_dist_temp == 1) {
+			    			int resource_dist_temp = Math.abs(Resource_loc[0][index1] - x_temp) + Math.abs(Resource_loc[1][index1] - y_temp);
+			    			if (resource_dist_temp < resource_dist) {
+			    				resource_dist = resource_dist_temp;
+			    			}
+			    			
+			    			//System.out.println("resource distance: " + resource_dist);
+			    			
+							if (resource_dist == 1) {
+								//System.out.println("resource distance: " + resource_dist);
 								//determine resource location:
-								if (resource_loc[0][index1] - x_temp == 1) 	{
+								if ((Resource_loc[0][index1] - x_temp == 1) & (Resource_loc[1][index1] - y_temp == 0) | x_temp == 0) 	{
 									east_closed = 1;
+									//System.out.println("East closed");
 								}
-								if (resource_loc[0][index1] - x_temp == -1) {
+								if (Resource_loc[0][index1] - x_temp == -1 & (Resource_loc[1][index1] - y_temp == 0) | x_temp == child.state.xExtent){
 									west_closed = 1;
+									//System.out.println("West closed");
 								}
-								if (resource_loc[1][index1] - y_temp == -1) {
+								if (Resource_loc[1][index1] - y_temp == -1 & Resource_loc[0][index1] - x_temp == 0 | y_temp == 0) {
 									north_closed = 1;
+									//System.out.println("North closed");
 								}
-								if (resource_loc[1][index1] - y_temp == 1) 	{
+								if (Resource_loc[1][index1] - y_temp == 1 & Resource_loc[0][index1] - x_temp == 0 | y_temp == child.state.yExtent) 	{
 									south_closed = 1;
+									//System.out.println("South closed");
 								}
 							}
 			    		}
+			    		
+			    		//System.out.println("Checks: " + north_closed + " " + south_closed + " " + east_closed + " " + west_closed + " ");
+			    		
 			    		if (north_closed == 0){
 			    			Movable_space[0][0] = x_temp; 
 			    			Movable_space[1][0] = y_temp-1;
@@ -362,10 +380,16 @@ public class GameState {
 			    			Movable_space[1][3] = y_temp;
 			    		}
 			    		for (int index2 = 0; index2 < Movable_space[0].length; index2 ++) {
+			    			
+			    			//System.out.println("Movable space: " + Movable_space[0][index2] + " " + Movable_space[1][index2]);
+			    			
 			    			if (Movable_space[0][index2] != -1 | Movable_space[1][index2] != -1) {
-			    				path_loc temp_start = new path_loc(x_temp, y_temp, 0);
+			    				path_loc temp_start = new path_loc(x_mine, y_mine, 0);
 			    				path_loc temp_goal =  new path_loc(Movable_space[0][index2], Movable_space[1][index2], 0);
 			    				int cost_temp = AStarHeuristic(temp_start, temp_goal, Resource_loc);
+			    				
+			    				//System.out.println("Cost temp: " + cost_temp);
+			    				
 			    				if (Closest_movement_cost[index0] > cost_temp) {
 			    					Closest_movement_cost[index0] = cost_temp;
 			    				}
@@ -383,9 +407,18 @@ public class GameState {
     }
     
     public int AStarHeuristic(path_loc start, path_loc goal, int[][] Resource_loc) {
+    	
+    	//System.out.println("Start: " + start.x_loc + " " + start.y_loc);
+    	//System.out.println("Goal: " + goal.x_loc + " " + goal.y_loc);
+    	
     	List<path_loc> Open_list = new ArrayList<path_loc>();
     	List<path_loc> Closed_list = new ArrayList<path_loc>();
     	List<path_loc> Child_list = new ArrayList<path_loc>();
+    	
+    	for (int index = 0; index < Resource_loc[0].length; index ++) {
+    		Closed_list.add(new path_loc(Resource_loc[0][index], Resource_loc[1][index], 0));
+    	}
+    	
     	int shortest_path_cost = 0;
     	Open_list.add(start);
     	while (Open_list.size() > 0) {
@@ -397,7 +430,16 @@ public class GameState {
     				lowest_cost_index = index;
     				lowest_cost = lowest_cost_temp;
     			}
-    			path_loc chosen_node = new path_loc(Open_list.get(lowest_cost_index).x_loc, Open_list.get(lowest_cost_index).y_loc, Open_list.get(lowest_cost_index).cost);
+    		}
+    		path_loc chosen_node = new path_loc(Open_list.get(lowest_cost_index).x_loc, Open_list.get(lowest_cost_index).y_loc, Open_list.get(lowest_cost_index).cost);
+    		Closed_list.add(chosen_node);
+    		//System.out.println("Chosen node: " + Open_list.get(lowest_cost_index).x_loc + " " + Open_list.get(lowest_cost_index).y_loc) ;
+    		Open_list.remove(lowest_cost_index);
+    		
+    		//for (int index = 0; index < Open_list.size(); index ++) {
+    		//	System.out.println("Open list: " + Open_list.get(index).x_loc + " " + Open_list.get(index).y_loc);
+    		//}
+    		
     			if (chosen_node.cost >= 999) {
     				System.out.println("No path to target");
     				shortest_path_cost = -1;
@@ -407,42 +449,75 @@ public class GameState {
     				Closed_list.clear();
     				Child_list.clear();
     				shortest_path_cost = chosen_node.cost;
-    				System.out.println("shortest path cost for 1 unit: " + shortest_path_cost);
     				break;
     			}
     			Child_list = AStarChildrenGen(chosen_node, Resource_loc);
-    			int remove_count = 0;
+    			
+    			//for (int index = 0; index < Child_list.size(); index ++) {
+        		//	System.out.println("Child_list: " + Child_list.get(index).x_loc + " " + Child_list.get(index).y_loc);
+        		//}
+    			
+    			List<Integer> remove_count = new ArrayList<Integer>();
     			for (int index1 = 0; index1 < Child_list.size(); index1 ++) {
     				for (int index2 = 0; index2 < Closed_list.size(); index2 ++) {
     					if (Child_list.get(index1).x_loc == Closed_list.get(index2).x_loc & Child_list.get(index1).y_loc == Closed_list.get(index2).y_loc) {
-    						Child_list.remove(index1 - remove_count);
-    						remove_count ++;
+    						remove_count.add(index1);
+    						break;
     					}
     				}
     			}
-    			remove_count = 0;
-    			int open_remove_count = 0;
+    			int count = 0;
+    			for (int index1 = 0; index1 < remove_count.size(); index1 ++) {
+    				Child_list.remove(remove_count.get(index1)-count);
+    				count = count + 1;
+    			}
+    			remove_count.clear();
+    			List<Integer> open_remove_count = new ArrayList<Integer>();
     			for (int index1 = 0; index1 < Child_list.size(); index1 ++) {
     				for (int index2 = 0; index2 < Open_list.size(); index2 ++) {
     					if (Child_list.get(index1).x_loc == Open_list.get(index2).x_loc & Child_list.get(index1).y_loc == Open_list.get(index2).y_loc) {
     						if(Child_list.get(index1).cost < Open_list.get(index2).cost) {
-    							Open_list.remove(index2 - open_remove_count);
-    							open_remove_count ++;
+    							open_remove_count.add(index2);
+    							break;
     						}
-    						if(Child_list.get(index1).cost > Open_list.get(index2).cost) {
-    							Child_list.remove(index1 - remove_count);
-    							remove_count ++;
+    						if(Child_list.get(index1).cost >= Open_list.get(index2).cost) {
+    							remove_count.add(index1);
+    							break;
     						}
     					}
     				}
     			}
+    			count = 0;
+    			for (int index1 = 0; index1 < open_remove_count.size(); index1 ++) {
+    				Open_list.remove(open_remove_count.get(index1)-count);
+    				count = count + 1;
+    			}
+    			count = 0;
+    			//System.out.println("remove_count");
+    			for (int index1 = 0; index1 < remove_count.size(); index1 ++) {
+    				Child_list.remove(remove_count.get(index1)-count);
+    				count = count + 1;
+    			}
+    			remove_count.clear(); open_remove_count.clear();
     			for (int index1 = 0; index1 < Child_list.size(); index1 ++) {
     				Open_list.add(Child_list.get(index1));
     			}
+    			
+        		//for (int index = 0; index < Open_list.size(); index ++) {
+        		//	System.out.println("Open list post: " + Open_list.get(index).x_loc + " " + Open_list.get(index).y_loc);
+        		//}
+    			
+    			if (chosen_node.x_loc == goal.x_loc & chosen_node.y_loc == goal.y_loc) {
+    				Open_list.clear();
+    				Closed_list.clear();
+    				Child_list.clear();
+    				shortest_path_cost = chosen_node.cost;
+    				System.out.println("shortest path cost for 1 unit: " + shortest_path_cost);
+    				break;
+    			}
     		}
-    	}
     	return shortest_path_cost;
-    }
+    	}
     
     public int heuristic_calc(path_loc start, path_loc goal) {
     	int h_cost = 0;
@@ -460,28 +535,31 @@ public class GameState {
     		if (resource_loc[0][index] == parent.x_loc+1 & resource_loc[1][index] == parent.y_loc) {
     			xp_check = 1;
     		}
-    		if (resource_loc[0][index] == parent.x_loc-1 & resource_loc[1][index] == parent.y_loc) {
+    		if ((resource_loc[0][index] == parent.x_loc-1 & resource_loc[1][index] == parent.y_loc)| parent.x_loc == 0) {
     			xm_check = 1;
     		}
     		if (resource_loc[0][index] == parent.x_loc & resource_loc[1][index] == parent.y_loc+1) {
     			yp_check = 1;
     		}
-    		if (resource_loc[0][index] == parent.x_loc & resource_loc[1][index] == parent.y_loc-1) {
+    		if ((resource_loc[0][index] == parent.x_loc & resource_loc[1][index] == parent.y_loc-1)| parent.y_loc == 0) {
     			ym_check = 1;
     		}
     	}
     	
     	for (int index = 0; index < 4; index ++) {
-    		if (xp_check != 1) {
+    		if (xp_check != 1 & index == 0) {
     		children_nodes.add(new path_loc(parent.x_loc+1, parent.y_loc, parent.cost+1));
+    		
     		}
-    		if (xm_check != 1) {
+    		if (xm_check != 1 & index == 1) {
     		children_nodes.add(new path_loc(parent.x_loc-1, parent.y_loc, parent.cost+1));
+    		
     		}
-    		if (yp_check!= 1) {
+    		if (yp_check!= 1 & index == 2) {
     		children_nodes.add(new path_loc(parent.x_loc, parent.y_loc+1, parent.cost+1));
+    		
     		}
-    		if (ym_check!= 1) {
+    		if (ym_check!= 1 & index == 3) {
     		children_nodes.add(new path_loc(parent.x_loc, parent.y_loc-1, parent.cost+1));
     		}
     	}
@@ -602,39 +680,37 @@ public class GameState {
     				//System.out.println("Attempting to move unit: " + current_unit.unit_ID + " direction: " + Math.floorMod(action_num, valid_actions.length));
     				
     				if (Math.floorMod(action_num, valid_actions.length) == 0) {
-    					if (current_unit.y_loc < parent_state.yExtent && resource_north == 0) {
+    					if (current_unit.y_loc == 0) {
+    					System.out.println("North wall hit");
+    					}
+    					if (current_unit.y_loc != 0  | resource_north == 0) {
 	    					//current_unit.y_loc += 1;
     						moving_units_temp.get(index2).y_loc -= 1;
-    						
 	    					child_node_action.put(current_unit.unit_ID, Action.createPrimitiveMove(current_unit.unit_ID, Direction.NORTH));
-	    					
 	    					added_cost += 1;
     					}
     				}
     				if (Math.floorMod(action_num, valid_actions.length) == 1) {
-    					if (current_unit.x_loc < parent_state.xExtent && resource_east == 0) {
+    					if (current_unit.x_loc < parent_state.xExtent | resource_east == 0) {
     						//current_unit.x_loc += 1;
     						moving_units_temp.get(index2).x_loc += 1;
     						child_node_action.put(current_unit.unit_ID, Action.createPrimitiveMove(current_unit.unit_ID, Direction.EAST));
-    						
     						added_cost += 1;
     					}
     				}
     				if (Math.floorMod(action_num, valid_actions.length) == 2) {
-    					if (current_unit.y_loc != 0 && resource_south == 0) {
+    					if (current_unit.y_loc != parent_state.yExtent | resource_south == 0) {
     						//current_unit.y_loc -= 1;
     						moving_units_temp.get(index2).y_loc += 1;
     						child_node_action.put(current_unit.unit_ID, Action.createPrimitiveMove(current_unit.unit_ID, Direction.SOUTH));
-    						
     						added_cost += 1;
     					}
     				}
     				if (Math.floorMod(action_num, valid_actions.length) == 3) {
-    					if (current_unit.x_loc != 0 && resource_west == 0) {
+    					if (current_unit.x_loc != 0 | resource_west == 0) {
     						//current_unit.x_loc -= 1;
     						moving_units_temp.get(index2).x_loc -= 1;
     						child_node_action.put(current_unit.unit_ID, Action.createPrimitiveMove(current_unit.unit_ID, Direction.WEST));
-    						
     						added_cost += 1;
     					}
     				}
