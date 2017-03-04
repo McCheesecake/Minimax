@@ -79,11 +79,13 @@ public class MinimaxAlphaBeta extends Agent {
         //DEBUG
         
     	List<GameStateChild> children_nodes = node.state.getChildren(node, 1);
-    	children_nodes = orderChildrenWithHeuristics(children_nodes);
+    	//children_nodes = orderChildrenWithHeuristics(children_nodes);
+    	for (int index = 0; index < children_nodes.size(); index ++) {
+    	//System.out.println(children_nodes.get(index).action);
+    	}
+        //System.out.println("Required depth: " + depth);
     	
-        System.out.println("Required depth: " + depth);
-    	
-        saved_node Chosen_node = Max_Value(node, alpha, beta, 1, depth);
+        saved_node Chosen_node = Max_Value(node, alpha, beta, 0, depth);
         GameStateChild output_node = Chosen_node.chosen_state;
         
         System.out.println("chosen action: " + output_node.action);
@@ -94,35 +96,33 @@ public class MinimaxAlphaBeta extends Agent {
     public saved_node Max_Value(GameStateChild Input_state, double alpha, double beta, int current_depth, int max_depth) {
     	if (current_depth == max_depth) {
     		double v = Input_state.state.getUtility(Input_state);
-    		//System.out.println("is this being reached? " + v);
     		saved_node chosen_node = new saved_node(v,Input_state);
     		return chosen_node;
     	}
-    	//System.out.println("Current depth (max): " + current_depth);
     	double v = Double.NEGATIVE_INFINITY;
     	
     	List<GameStateChild> children_nodes = Input_state.state.getChildren(Input_state, 1);
     	children_nodes = orderChildrenWithHeuristics(children_nodes);
     	
-    	//for (int index = 0; index < children_nodes.size(); index ++) {
-    		//System.out.println("Max child actions: " + children_nodes.get(index).action);
-    	//}
-    	//System.out.println(" ");
-    	
     	saved_node chosen_node = new saved_node(0, Input_state);
     	
     	for (int index = 0; index < children_nodes.size(); index ++) {
+    		System.out.println("Evaluating Max Node: " + children_nodes.get(index).action);
     		double v_temp = Min_Value(children_nodes.get(index),alpha,beta,current_depth+1,max_depth).utility;
+    		//System.out.println("v output from min: " + v_temp);
     		if (v < v_temp) {
     			v = v_temp;
     			chosen_node.utility = v;
     			chosen_node.chosen_state = children_nodes.get(index);
+    			//System.out.println("best state max current: " + chosen_node.chosen_state.action + " with: " + chosen_node.utility);
     		}
     		
     		if (v > beta) {
+    			//System.out.println("stops at node: " + children_nodes.get(index).action);
     			return chosen_node;
     		}
     		alpha = Math.max(alpha, v);
+    			//System.out.println("alpha = " + alpha);
     	}
     	
     	return chosen_node;
@@ -140,25 +140,25 @@ public class MinimaxAlphaBeta extends Agent {
     	
     	List<GameStateChild> children_nodes = Input_state.state.getChildren(Input_state, 0);
     	children_nodes = orderChildrenWithHeuristics(children_nodes);
-    	
-    	//for (int index = 0; index < children_nodes.size(); index ++) {
-    		//System.out.println("Min child actions: " + children_nodes.get(index).action);
-    	//}
-    	
     	saved_node chosen_node = new saved_node(0, Input_state);
     	
     	for (int index = 0; index < children_nodes.size(); index ++) {
+    		System.out.println("Evaluating Min Node: " + children_nodes.get(index).action);
     		double v_temp = Max_Value(children_nodes.get(index),alpha,beta,current_depth+1,max_depth).utility;
-    		//System.out.println("Is this being reached?");
+    		//System.out.println("v output from max: " + v_temp);
     		if (v > v_temp) {
     			v = v_temp;
     			chosen_node.utility = v;
     			chosen_node.chosen_state = children_nodes.get(index);
+    			//System.out.println("best state max current: " + chosen_node.chosen_state.action + " with: " + chosen_node.utility);
     		}
     		if (v <= alpha) {
+    			//System.out.println("stops at node: " + children_nodes.get(index).action);
     			return chosen_node;
+    			
     		}
     		beta = Math.min(beta, v);
+    		//System.out.println("beta = " + beta);
     	}
     	
     	//System.out.println(current_depth);

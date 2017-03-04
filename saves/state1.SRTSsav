@@ -4,7 +4,7 @@
         <ID>0</ID>
         <unit>
             <ID>0</ID>
-            <currentHealth>133</currentHealth>
+            <currentHealth>129</currentHealth>
             <xPosition>0</xPosition>
             <yPosition>17</yPosition>
             <templateID>25</templateID>
@@ -13,7 +13,7 @@
         </unit>
         <unit>
             <ID>1</ID>
-            <currentHealth>136</currentHealth>
+            <currentHealth>130</currentHealth>
             <xPosition>1</xPosition>
             <yPosition>18</yPosition>
             <templateID>25</templateID>

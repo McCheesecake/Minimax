@@ -13,7 +13,6 @@ import edu.cwru.sepia.environment.model.state.UnitTemplate.UnitTemplateView;
 import edu.cwru.sepia.util.Direction;
 
 import java.util.*;
-
 /**
  * This class stores all of the information the agent
  * needs to know about the state of the game. For example this
@@ -110,7 +109,8 @@ public class GameState {
 					shortest_dist = temp_dist;
 				}
 			}
-			total_dist = total_dist + shortest_dist;
+			//total_dist = total_dist + shortest_dist;
+			total_dist = shortest_dist;
 		}
 		
 		for (int index = 1; index < Enemy_Units.size(); index ++) {
@@ -267,24 +267,43 @@ public class GameState {
     	int my_total_health = 0;
     	int enemy_total_health = 0;
     	int[] distance = new int[My_units.size()];
+    	//int Astarcheck = 0;
+    	int[] adjacency_bonus = new int[My_units.size()];
     	for (int index = 0; index < My_units.size(); index ++) {
     		my_total_health += My_units.get(index).health;
-    		
     		for (int index1 = 0; index1 < Enemy_units.size(); index1++) {
     			enemy_total_health += Enemy_units.get(index1).health;
     			distance[index] = Math.abs(My_units.get(index).x_loc-Enemy_units.get(index1).x_loc)+Math.abs(My_units.get(index).y_loc-Enemy_units.get(index1).y_loc);
+    			if (distance[index] == 1) {
+    				adjacency_bonus[index] = 1000;
+    			}
+    			else{
+    				adjacency_bonus[index] = 0;
+    			}
     		}
     	}
-    	int total_distance = 0;
-    	for (int index = 0; index < distance.length; index ++) {
-    		total_distance += distance[index];
-    	}
+    	//int total_distance = 0;
+    	//for (int index = 0; index < distance.length; index ++) {
+    	//	total_distance += distance[index];
+    	//}
+    	//double utility = -enemy_total_health + my_total_health;
+    	//double utility = 0;
+    	//if (Astarcheck == 0) {
+    		int total_cost = AStarCalc(child);
+    		double utility = -10*total_cost - 100*enemy_total_health;
+    		//System.out.println("Shortest path cost: " + total_cost);
+    		
+    		for (int index = 0; index < adjacency_bonus.length; index ++) {
+    			utility = utility + adjacency_bonus[index];
+    		}
+    		//int distance_smallest = 9999;
+    		for (int index = 0; index < distance.length; index++) {
+    			utility = utility + distance[index];
+    		}
+    	//}
     	
-    	int total_cost = AStarCalc(child);
     	
-    	double utility = my_total_health - 5*enemy_total_health - total_distance - 10*total_cost;
     	
-    //	System.out.println("Shortest path cost: " + total_cost);
     	return utility;
     	
     }
@@ -305,9 +324,33 @@ public class GameState {
     	List<Unit_info> My_units = child.state.My_Units;
     	List<Unit_info> Enemy_units = child.state.Enemy_Units;
     	
+    	
     //	System.out.println("Enemy units " + Enemy_units.get(0).x_loc + " " + Enemy_units.get(0).y_loc);
     	
-    	int[][] Resource_loc = child.state.resource_loc;
+    	int[][] Resource_loc_temp = child.state.resource_loc;
+    	int[][] Resource_loc = new int[2][child.state.resource_loc[0].length + child.state.Enemy_Units.size() + child.state.My_Units.size()];
+    	//Resource_loc = Resource_loc_temp;
+    	
+    	for(int index = 0; index < Resource_loc_temp[0].length; index ++) {
+    		Resource_loc[0][index] = Resource_loc_temp[0][index];
+    		Resource_loc[1][index] = Resource_loc_temp[1][index];
+    	}
+    	for(int index = 0; index < child.state.Enemy_Units.size(); index ++) {
+    		Resource_loc[0][index+Resource_loc_temp[0].length] = child.state.Enemy_Units.get(index).x_loc;
+    		Resource_loc[1][index+Resource_loc_temp[0].length] = child.state.Enemy_Units.get(index).y_loc;
+    	}
+    	for(int index = 0; index < child.state.My_Units.size(); index ++) {
+    		//System.out.println("Resource loc size: " + Resource_loc[0].length);
+    		//System.out.println("index: " + (index+Resource_loc_temp[0].length-1+child.state.Enemy_Units.size()-1));
+    		Resource_loc[0][index+Resource_loc_temp[0].length+child.state.Enemy_Units.size()] = child.state.My_Units.get(index).x_loc;
+    		Resource_loc[1][index+Resource_loc_temp[0].length+child.state.Enemy_Units.size()] = child.state.My_Units.get(index).y_loc;
+    		
+    	}
+    	
+    	//for(int index = 0; index < Resource_loc[0].length; index++ ) {
+    	//	System.out.println("Resource loc: " + Resource_loc[0][index] + " " + Resource_loc[1][index]);
+    	//}
+    	
     	int[][] Movable_space = new int[2][4];
     	int[] Closest_movement_cost = new int [My_units.size()];
     	for (int index =0; index < My_units.size(); index ++){
@@ -320,6 +363,8 @@ public class GameState {
     	
     	//Find open locations next to enemy unit:
     	for(int index0 = 0; index0 < My_units.size(); index0 ++) {
+    		//System.out.println(" ");
+    		//System.out.println("New unit");
     		int x_mine = My_units.get(index0).x_loc;
     		int y_mine = My_units.get(index0).y_loc;
 	    	for(int index = 0; index < Enemy_units.size(); index ++) {
@@ -330,13 +375,12 @@ public class GameState {
 		    		int east_closed  = 0;
 		    		int west_closed  = 0;
 		    		int resource_dist = 99;
-		    		if (Math.abs(x_mine-x_temp) + Math.abs(y_mine-y_temp) > 1) {
+		    		//if (Math.abs(x_mine-x_temp) + Math.abs(y_mine-y_temp) > 1) {
 			    		for(int index1 = 0; index1 < Resource_loc[0].length; index1 ++) {
 			    			int resource_dist_temp = Math.abs(Resource_loc[0][index1] - x_temp) + Math.abs(Resource_loc[1][index1] - y_temp);
 			    			if (resource_dist_temp < resource_dist) {
 			    				resource_dist = resource_dist_temp;
 			    			}
-			    			
 			    			//System.out.println("resource distance: " + resource_dist);
 			    			
 							if (resource_dist == 1) {
@@ -346,7 +390,7 @@ public class GameState {
 									east_closed = 1;
 									//System.out.println("East closed");
 								}
-								if (Resource_loc[0][index1] - x_temp == -1 & (Resource_loc[1][index1] - y_temp == 0) | x_temp == child.state.xExtent){
+								if (Resource_loc[0][index1] - x_temp == -1 & (Resource_loc[1][index1] - y_temp == 0) | x_temp == child.state.xExtent-1){
 									west_closed = 1;
 									//System.out.println("West closed");
 								}
@@ -354,13 +398,13 @@ public class GameState {
 									north_closed = 1;
 									//System.out.println("North closed");
 								}
-								if (Resource_loc[1][index1] - y_temp == 1 & Resource_loc[0][index1] - x_temp == 0 | y_temp == child.state.yExtent) 	{
+								if (Resource_loc[1][index1] - y_temp == 1 & Resource_loc[0][index1] - x_temp == 0 | y_temp == child.state.yExtent-1) 	{
 									south_closed = 1;
 									//System.out.println("South closed");
 								}
 							}
+			    		//}
 			    		}
-			    		
 			    		//System.out.println("Checks: " + north_closed + " " + south_closed + " " + east_closed + " " + west_closed + " ");
 			    		
 			    		if (north_closed == 0){
@@ -380,33 +424,46 @@ public class GameState {
 			    			Movable_space[1][3] = y_temp;
 			    		}
 			    		for (int index2 = 0; index2 < Movable_space[0].length; index2 ++) {
-			    			
+			    			int cost_temp = 0;
 			    			//System.out.println("Movable space: " + Movable_space[0][index2] + " " + Movable_space[1][index2]);
+			    			//if (Movable_space[0][index2] != -1 & (Math.abs(Movable_space[0][index2]-x_mine) + Math.abs(Movable_space[1][index2]-y_mine))==1){
+			    			//	Closest_movement_cost[index0] = -10;
+			    			//}
+			    			//if (Movable_space[0][index2] != -1 & (Math.abs(Movable_space[0][index2]-x_mine) + Math.abs(Movable_space[1][index2]-y_mine))==0){
+			    			//	Closest_movement_cost[index0] = -9999;
+			    			//}
 			    			
-			    			if (Movable_space[0][index2] != -1 | Movable_space[1][index2] != -1) {
+			    			if (Movable_space[0][index2] != -1) {
 			    				path_loc temp_start = new path_loc(x_mine, y_mine, 0);
 			    				path_loc temp_goal =  new path_loc(Movable_space[0][index2], Movable_space[1][index2], 0);
-			    				int cost_temp = AStarHeuristic(temp_start, temp_goal, Resource_loc);
+			    				cost_temp = AStarHeuristic(temp_start, temp_goal, Resource_loc, child.state.xExtent, child.state.yExtent);
+			    				//System.out.println(cost_temp);
 			    				
-			    				//System.out.println("Cost temp: " + cost_temp);
 			    				
-			    				if (Closest_movement_cost[index0] > cost_temp) {
+			    				if (Closest_movement_cost[index0] >= cost_temp) {
 			    					Closest_movement_cost[index0] = cost_temp;
+			    					//System.out.println("Closest movement cost: " + Closest_movement_cost[index0]);
 			    				}
 			    			}
 			    		}
-			    	}
+			    	
 	    	}
     	}
     	
     	int total_cost = 0;
     	for (int index = 0; index < My_Units.size(); index ++) {
-    		total_cost = Closest_movement_cost[index]; 
+    		//System.out.println("Closest Movement Cost: " + Closest_movement_cost[index]);
+    		total_cost = Closest_movement_cost[index] + total_cost; 
     	}
+    	
+    	//System.out.println(" ");
+    	//System.out.println("Finishes generating A* calc");
+    	//System.out.println(" ");
+    	//System.out.println("Total cost: " + total_cost);
     	return total_cost;
     }
     
-    public int AStarHeuristic(path_loc start, path_loc goal, int[][] Resource_loc) {
+    public int AStarHeuristic(path_loc start, path_loc goal, int[][] Resource_loc, int xExtent, int yExtent) {
     	
     	//System.out.println("Start: " + start.x_loc + " " + start.y_loc);
     	//System.out.println("Goal: " + goal.x_loc + " " + goal.y_loc);
@@ -433,25 +490,23 @@ public class GameState {
     		}
     		path_loc chosen_node = new path_loc(Open_list.get(lowest_cost_index).x_loc, Open_list.get(lowest_cost_index).y_loc, Open_list.get(lowest_cost_index).cost);
     		Closed_list.add(chosen_node);
-    		//System.out.println("Chosen node: " + Open_list.get(lowest_cost_index).x_loc + " " + Open_list.get(lowest_cost_index).y_loc) ;
+    		//System.out.println("Chosen node: " + Open_list.get(lowest_cost_index).x_loc + " " + Open_list.get(lowest_cost_index).y_loc + " cost: " + Open_list.get(lowest_cost_index).cost) ;
     		Open_list.remove(lowest_cost_index);
     		
     		//for (int index = 0; index < Open_list.size(); index ++) {
     		//	System.out.println("Open list: " + Open_list.get(index).x_loc + " " + Open_list.get(index).y_loc);
     		//}
     		
-    			if (chosen_node.cost >= 999) {
-    				System.out.println("No path to target");
-    				shortest_path_cost = -1;
-    			}
+    			
     			if (chosen_node.x_loc == goal.x_loc & chosen_node.y_loc == goal.y_loc) {
     				Open_list.clear();
     				Closed_list.clear();
     				Child_list.clear();
     				shortest_path_cost = chosen_node.cost;
-    				break;
+    				//shortest_path_cost = -9999;
+    				return shortest_path_cost;
     			}
-    			Child_list = AStarChildrenGen(chosen_node, Resource_loc);
+    			Child_list = AStarChildrenGen(chosen_node, Resource_loc, xExtent, yExtent);
     			
     			//for (int index = 0; index < Child_list.size(); index ++) {
         		//	System.out.println("Child_list: " + Child_list.get(index).x_loc + " " + Child_list.get(index).y_loc);
@@ -499,6 +554,12 @@ public class GameState {
     				count = count + 1;
     			}
     			remove_count.clear(); open_remove_count.clear();
+    			
+    			if(Child_list.size() == 0){
+    				shortest_path_cost = 9999;
+    				return shortest_path_cost;
+    			}
+    			
     			for (int index1 = 0; index1 < Child_list.size(); index1 ++) {
     				Open_list.add(Child_list.get(index1));
     			}
@@ -506,16 +567,26 @@ public class GameState {
         		//for (int index = 0; index < Open_list.size(); index ++) {
         		//	System.out.println("Open list post: " + Open_list.get(index).x_loc + " " + Open_list.get(index).y_loc);
         		//}
-    			
+    			if (chosen_node.cost >= 60) {
+    				//System.out.println("No path to target");
+    				shortest_path_cost = 9999;
+    				Open_list.clear();
+    				Child_list.clear();
+    				Closed_list.clear();
+    				return shortest_path_cost;
+    				
+    			}
     			if (chosen_node.x_loc == goal.x_loc & chosen_node.y_loc == goal.y_loc) {
+    				//System.out.println("shortest path cost for 1 unit: " + shortest_path_cost);
     				Open_list.clear();
     				Closed_list.clear();
     				Child_list.clear();
     				shortest_path_cost = chosen_node.cost;
-    				System.out.println("shortest path cost for 1 unit: " + shortest_path_cost);
     				break;
     			}
     		}
+    	//System.out.println("Shortest 1 unit cost: " + shortest_path_cost);
+    	//System.out.println(" ");
     	return shortest_path_cost;
     	}
     
@@ -525,20 +596,20 @@ public class GameState {
     	return h_cost;
     }
     
-    public List<path_loc> AStarChildrenGen(path_loc parent, int[][] resource_loc) {
+    public List<path_loc> AStarChildrenGen(path_loc parent, int[][] resource_loc, int xExtent, int yExtent) {
     	List<path_loc> children_nodes = new ArrayList<path_loc>();
     	int xp_check = 0;
     	int xm_check = 0;
     	int yp_check = 0;
     	int ym_check = 0;
     	for (int index = 0; index < resource_loc[0].length; index ++) {
-    		if (resource_loc[0][index] == parent.x_loc+1 & resource_loc[1][index] == parent.y_loc) {
+    		if ((resource_loc[0][index] == parent.x_loc+1 & resource_loc[1][index] == parent.y_loc)| parent.x_loc == xExtent -1) {
     			xp_check = 1;
     		}
     		if ((resource_loc[0][index] == parent.x_loc-1 & resource_loc[1][index] == parent.y_loc)| parent.x_loc == 0) {
     			xm_check = 1;
     		}
-    		if (resource_loc[0][index] == parent.x_loc & resource_loc[1][index] == parent.y_loc+1) {
+    		if ((resource_loc[0][index] == parent.x_loc & resource_loc[1][index] == parent.y_loc+1)| parent.y_loc == yExtent -1) {
     			yp_check = 1;
     		}
     		if ((resource_loc[0][index] == parent.x_loc & resource_loc[1][index] == parent.y_loc-1)| parent.y_loc == 0) {
@@ -563,6 +634,11 @@ public class GameState {
     		children_nodes.add(new path_loc(parent.x_loc, parent.y_loc-1, parent.cost+1));
     		}
     	}
+    	
+    	//System.out.println(" ");
+    	//System.out.println("Finishes generating A* children");
+    	//System.out.println("Number of children: " + children_nodes.size());
+    	
     	return children_nodes;
     }
 
@@ -612,7 +688,7 @@ public class GameState {
     	if (moving_units.size() != 0) {
     		for (int index1 = 0; index1 < (int)Math.pow(valid_actions.length, moving_units.size()); index1 ++) {
     			int action_num = index1;
-    			Map<Integer,Action> child_node_action = new HashMap<Integer,Action>(); 
+    			Map<Integer,Action> child_node_action = new HashMap<Integer,Action>(moving_units.size()); 
     			
     			List<Unit_info> moving_units_temp = new ArrayList<Unit_info>();
     			List<Unit_info> static_units_temp = new ArrayList<Unit_info>();
@@ -624,9 +700,11 @@ public class GameState {
     			}
     			
     			//System.out.println(moving_units_temp.get(1).x_loc + " " + moving_units_temp.get(1).y_loc);
-    			
-    			for (int index2 = 0; index2 < moving_units.size(); index2++) {
+    			int counter = 0;
+    			for (int index2 = 0; index2 < moving_units_temp.size(); index2++) {
     				Unit_info current_unit = moving_units_temp.get(index2);
+    				
+    				//System.out.println("Currently moving: " + current_unit.unit_ID);
     				
     				//Binary check for resource nearby:
     				int resource_north = 0;
@@ -635,7 +713,7 @@ public class GameState {
     				int resource_west = 0;
     				
     				for (int rs_index = 0; rs_index < parent_state.resource_loc[0].length; rs_index ++) {
-    					int resource_dist_temp = Math.abs(resource_loc[0][rs_index] - current_unit.x_loc) + Math.abs(resource_loc[1][rs_index] - current_unit.y_loc);
+    					int resource_dist_temp = Math.abs(parent_state.resource_loc[0][rs_index] - current_unit.x_loc) + Math.abs(parent_state.resource_loc[1][rs_index] - current_unit.y_loc);
     					if (resource_dist_temp == 1) {
     						//determine resource location:
     						if (resource_loc[0][rs_index] - current_unit.x_loc == 1) {
@@ -674,24 +752,48 @@ public class GameState {
     					}
     				}
     				
+    				for (int index = 0; index < static_units.size(); index ++) {
+    					int unit_dist_check = Math.abs(current_unit.x_loc - static_units.get(index).x_loc) + Math.abs(current_unit.y_loc - static_units.get(index).y_loc);  
+    					if (unit_dist_check == 1) {
+    						int unit_dist_x = current_unit.x_loc - static_units.get(index).x_loc;
+    						int unit_dist_y = current_unit.y_loc - static_units.get(index).y_loc;
+    						if (unit_dist_x == 1) {
+    							resource_west = 1;
+    						}
+    						if (unit_dist_x == -1) {
+    							resource_east = 1;
+    						}
+    						if (unit_dist_y == 1) {
+    							resource_north = 1;
+    						}
+    						if (unit_dist_y == -1) {
+    							resource_south = 1;
+    						}
+    					}
+    				}
+    				
     				int added_cost = 0;
 					//System.out.println("North East South West Check: " + resource_north + " " + resource_east + " " + resource_south + " " + resource_west);
 					//System.out.println("Current unit location: " + current_unit.x_loc + " " + current_unit.y_loc);
     				//System.out.println("Attempting to move unit: " + current_unit.unit_ID + " direction: " + Math.floorMod(action_num, valid_actions.length));
     				
     				if (Math.floorMod(action_num, valid_actions.length) == 0) {
+					//if (action_num % valid_actions.length == 0) {
     					if (current_unit.y_loc == 0) {
-    					System.out.println("North wall hit");
+    					//System.out.println("North wall hit");
     					}
-    					if (current_unit.y_loc != 0  | resource_north == 0) {
+    					if (current_unit.y_loc != 0  & resource_north == 0) {
 	    					//current_unit.y_loc += 1;
     						moving_units_temp.get(index2).y_loc -= 1;
+    						//System.out.println("Current unit ID before moving: " + current_unit.unit_ID);
 	    					child_node_action.put(current_unit.unit_ID, Action.createPrimitiveMove(current_unit.unit_ID, Direction.NORTH));
 	    					added_cost += 1;
     					}
     				}
     				if (Math.floorMod(action_num, valid_actions.length) == 1) {
-    					if (current_unit.x_loc < parent_state.xExtent | resource_east == 0) {
+					//if (action_num % valid_actions.length == 1) {
+    					if (current_unit.x_loc != parent_state.xExtent-1 & resource_east == 0) {
+    						//System.out.println("Is East being reached");
     						//current_unit.x_loc += 1;
     						moving_units_temp.get(index2).x_loc += 1;
     						child_node_action.put(current_unit.unit_ID, Action.createPrimitiveMove(current_unit.unit_ID, Direction.EAST));
@@ -699,7 +801,8 @@ public class GameState {
     					}
     				}
     				if (Math.floorMod(action_num, valid_actions.length) == 2) {
-    					if (current_unit.y_loc != parent_state.yExtent | resource_south == 0) {
+					//if (action_num % valid_actions.length == 2) {
+    					if (current_unit.y_loc != parent_state.yExtent-1 & resource_south == 0) {
     						//current_unit.y_loc -= 1;
     						moving_units_temp.get(index2).y_loc += 1;
     						child_node_action.put(current_unit.unit_ID, Action.createPrimitiveMove(current_unit.unit_ID, Direction.SOUTH));
@@ -707,7 +810,8 @@ public class GameState {
     					}
     				}
     				if (Math.floorMod(action_num, valid_actions.length) == 3) {
-    					if (current_unit.x_loc != 0 | resource_west == 0) {
+					//if (action_num % valid_actions.length == 3) {
+    					if (current_unit.x_loc != 0 & resource_west == 0) {
     						//current_unit.x_loc -= 1;
     						moving_units_temp.get(index2).x_loc -= 1;
     						child_node_action.put(current_unit.unit_ID, Action.createPrimitiveMove(current_unit.unit_ID, Direction.WEST));
@@ -715,16 +819,26 @@ public class GameState {
     					}
     				}
     				if (Math.floorMod(action_num, valid_actions.length) == 4) {
+					//if (action_num % valid_actions.length == 4) {
     					int closest_unit_index = 0;
     					int closest_distance = 999999;
     					for (int index3 = 0; index3 < static_units.size(); index3 ++) {
-    						int closest_distance_temp = Math.abs(static_units.get(index3).x_loc-current_unit.x_loc) + Math.abs(static_units.get(index3).y_loc-current_unit.y_loc);
+    						//System.out.println(" ");
+    						//System.out.println("Enemy unit evaluating: " + static_units.get(index3).x_loc + " " + static_units.get(index3).y_loc);
+    						//System.out.println(" ");
+    						int closest_distance_temp = (int) Math.ceil(Math.sqrt(Math.pow(static_units.get(index3).x_loc-current_unit.x_loc,2)+ Math.pow(static_units.get(index3).y_loc-current_unit.y_loc,2)));
+    						//System.out.println(closest_distance_temp);
+    						//System.out.println("("+static_units.get(index3).x_loc + "-" + current_unit.x_loc+ ")^2" +"("+static_units.get(index3).y_loc+"-"+current_unit.y_loc+")^2");
     						if (closest_distance_temp < closest_distance) {
     							closest_distance = closest_distance_temp;
     							closest_unit_index = index3;
     						}
+    					}
+    						//System.out.println("Closest enemy unit: " + closest_unit_index);
+    						//System.out.println("Closest unit range: " + closest_distance);
+    						//System.out.println("Current unit range stuff: " + current_unit.range);
     						if (current_unit.range == 1) {
-    							if (closest_distance_temp == 1) {
+    							if (closest_distance == 1) {
     								if (static_units.get(closest_unit_index).health > 0) {
     									child_node_action.put(current_unit.unit_ID, Action.createPrimitiveAttack(current_unit.unit_ID, static_units.get(closest_unit_index).unit_ID));
     									static_units_temp.get(closest_unit_index).health -= current_unit.damage;
@@ -732,7 +846,7 @@ public class GameState {
     							}
     						}
     						if (current_unit.range > 1) {
-    							if (closest_distance_temp <= current_unit.range) {
+    							if (closest_distance < current_unit.range) {
     								if (static_units.get(closest_unit_index).health > 0) {
 	    								child_node_action.put(current_unit.unit_ID, Action.createPrimitiveAttack(current_unit.unit_ID, static_units.get(closest_unit_index).unit_ID));
 	    								static_units_temp.get(closest_unit_index).health -= current_unit.damage;
@@ -740,12 +854,42 @@ public class GameState {
     							}
     						}
     					}
-    				}
+    			
+    				
+    				//System.out.println(child_node_action);
+    				
     				//first child state should have been created already here:
     				action_num /= valid_actions.length;
+    				int null_check = 0;
+    				//System.out.println("child_node_action.size = " +child_node_action.size());
+    				if(moving_units.size() > 1 & counter == moving_units.size()) {
+    					for(int index6 = 0; index6 < moving_units.size(); index6 ++) {
+		    				for(int index5 = 0; index5 < child_node_action.size(); index5 ++) {
+		    					//System.out.println("Child node action 1: " + child_node_action.get(moving_units.get(index6).unit_ID));
+		    					if(moving_units.get(index6).unit_ID == null) {
+		    						//System.out.println("Null check = 1");
+		    						null_check = 1;
+		    					}
+		    				}
+    					}
+    				}
+    				counter ++;
+    				if(child_node_action.size() < moving_units.size() & counter == moving_units.size()) {
+    					null_check = 1;
+    				}
+    				if(null_check == 1) {
+    					child_node_action.clear();
+    					moving_units_temp.clear();
+	    		    	static_units_temp.clear();
+    				}
     				
     				
+    				//System.out.println("counter: " + counter);
+    				//System.out.println(" ");
     				
+    				//if (counter == 3) {
+    				//	counter = 0;
+    				//}
     				if (child_node_action.size() == moving_units.size()) {
     					GameState temp_state;
 	    				int new_path_cost = parent_state.path_cost + added_cost;
@@ -771,7 +915,6 @@ public class GameState {
 	    		    	//System.out.println(" ");
 	    		    	
 	    		    	children_nodes.add(temp_child_state);
-	    		    	
 	    		    	moving_units_temp.clear();
 	    		    	static_units_temp.clear();
     				}
@@ -782,6 +925,9 @@ public class GameState {
       //  for (int index = 0; index < children_nodes.size(); index ++) {
      //   	System.out.println("Children node with " + children_nodes.get(index).state.My_Units.size() + " " + children_nodes.get(index).state.Enemy_Units.size() + " units");
      //   }
+    	//System.out.println(" ");
+    	//System.out.println("Finishes generating children");
+    	//System.out.println(" "+children_nodes.size());
         return children_nodes;
     }
 }
